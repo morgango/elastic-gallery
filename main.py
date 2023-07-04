@@ -10,6 +10,8 @@ from langchain.llms import OpenAI
 # environmental stuff
 import os
 from dotenv import load_dotenv, find_dotenv
+
+# load the .env file and retrieve the things we need
 load_dotenv(find_dotenv())
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
@@ -29,11 +31,9 @@ qa_pdf, qa_csv, chat_bot = st.tabs(["QA-PDF", "QA-CSV", "ChatBot"])
 
 with qa_pdf:
    st.header("Question and Answer - PDF ")
-   st.image("https://static.streamlit.io/examples/cat.jpg", width=200)
 
 with qa_csv:
    st.header("Question and Answer - CSV")
-   st.image("https://static.streamlit.io/examples/dog.jpg", width=200)
 
 with chat:
     if "generated" not in st.session_state:
