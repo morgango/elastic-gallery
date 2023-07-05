@@ -130,9 +130,6 @@ with qa:
                 
             st.write(response)
 
-with qa_csv:
-   st.header("Question and Answer - CSV")
-
 with dumb_chat_bot:
    st.header("Unaugmented Chat")
     # if "generated" not in st.session_state:
