@@ -39,16 +39,17 @@ def write_temp_file(uploaded_file):
         tmp_file_path = tmp_file.name
     return tmp_file_path
 
-def extract_text(uploaded_file, encoding="utf8", csv_args={'delimiter': ','}):
+def extract_text(uploaded_file, encoding="utf8", csv_loader_args={'delimiter': ','}):
     
     tmp_file_path = write_temp_file(uploaded_file)
-    if "pdf" in uploaded_file.type.lower().strip():
+    file_type = uploaded_file.type.lower().strip():
+    if "pdf" in file_type:
         loader = PyPDFLoader(file_path=tmp_file_path)
-    elif "csv" in uploaded_file.type.lower().strip():
+    elif "csv" in file_type:
         loader = CSVLoader(file_path=tmp_file_path, 
                         encoding=encoding, 
-                        csv_args=csv_args)
-    elif "text" in uploaded_file.type.lower().strip():
+                        csv_args=csv_loader_args)
+    elif "text" in file_type:
         loader = TextLoader(tmp_file_path)
     else:
         loader = TextLoader(tmp_file_path)
@@ -93,7 +94,7 @@ chain = load_conv_chain()
 st.set_page_config(page_title="LangChain Demo", page_icon=":robot:")
 st.header("LangChain Demo")
 
-qa, dumb_chat_bot, smarter_chat_bot = st.tabs(["QA - PDF or CSV", "ChatBot", "ChatBot - Smarter"])
+qa, dumb_chat_bot, smarter_chat_bot = st.tabs(["File Q&A - PDF,CSV,TXT", "ChatBot", "ChatBot - Smarter"])
 
 with qa:
     st.header("Ask your PDF 💬")
