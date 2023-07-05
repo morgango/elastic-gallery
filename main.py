@@ -14,13 +14,14 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
 from langchain.document_loaders.csv_loader import CSVLoader
+from langchain.document_loaders import PyPDFLoader
+from langchain.document_loaders import TextLoader
 
 # environmental stuff
 import os
 from dotenv import load_dotenv, find_dotenv
 
 # support stuff
-from PyPDF2 import PdfReader
 import tempfile
 
 # load the .env file and retrieve the things we need
@@ -31,18 +32,41 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ELASTICSEARCH_URL = os.environ.get("ELASTICSEARCH_URL")
 ELASTICSEARCH_INDEX = os.environ.get("ELASTICSEARCH_INDEX")
 
+def write_temp_file(uploaded_file):
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        tmp_file_path = tmp_file.name
+    return tmp_file_path
+
+def extract_text(uploaded_file, encoding="utf8", csv_args={'delimiter': ','}):
+    
+    tmp_file_path = write_temp_file(uploaded_file)
+    if "pdf" in uploaded_file.type.lower().strip():
+        loader = PyPDFLoader(file_path=tmp_file_path)
+    elif "csv" in uploaded_file.type.lower().strip():
+        loader = CSVLoader(file_path=tmp_file_path, 
+                        encoding=encoding, 
+                        csv_args=csv_args)
+    elif "text" in uploaded_file.type.lower().strip():
+        loader = TextLoader(tmp_file_path)
+    else:
+        loader = TextLoader(tmp_file_path)
+
+    text = loader.load()
+    return text
+
 def extract_pdf_text(pdf):
-    pdf_reader = PdfReader(pdf)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text()
+
+    tmp_file_path = write_temp_file(pdf)
+    loader = PyPDFLoader(file_path=tmp_file_path)
+    text = loader.load()
+
     return text
 
 def extract_csv_text(csv):
 
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-        tmp_file.write(csv.getvalue())
-        tmp_file_path = tmp_file.name
+    tmp_file_path = write_temp_file(csv)
 
     loader = CSVLoader(file_path=tmp_file_path, 
                        encoding="utf-8", 
@@ -51,8 +75,16 @@ def extract_csv_text(csv):
 
     return text
 
+def extract_txt_text(file):
+    
+    tmp_file_path = write_temp_file(file)
+    loader = TextLoader(tmp_file_path)
+    text = loader.load()
 
-def split_and_load_text(text elasticsearch_url=None, index_name=None, embeddings=None):
+    return text
+
+
+def split_and_load_text(text, elasticsearch_url=None, index_name=None, embeddings=None):
 
     # split into chunks
     text_splitter = CharacterTextSplitter(
@@ -61,6 +93,11 @@ def split_and_load_text(text elasticsearch_url=None, index_name=None, embeddings
         chunk_overlap=200,
         length_function=len
     )
+    print(f"Splitting {text}\n")
+    chunks = text_splitter.split_documents(text)
+    uploaded = ElasticVectorSearch.from_documents(chunks, embeddings,
+                                                elasticsearch_url=elasticsearch_url, 
+                                                index_name=index_name)
 
 def ask_es_question(question, elasticsearch_url=None, index_name=None, embeddings=None):
     
@@ -72,13 +109,13 @@ def ask_es_question(question, elasticsearch_url=None, index_name=None, embedding
     return docs
 
 
-def load_chain():
+def load_conv_chain():
     """Logic for loading the chain you want to use should go here."""
     llm = OpenAI(temperature=0.5, openai_api_key=OPENAI_API_KEY)
     chain = ConversationChain(llm=llm)
     return chain
 
-chain = load_chain()
+chain = load_conv_chain()
 
 # From here down is all the StreamLit UI.
 st.set_page_config(page_title="LangChain Demo", page_icon=":robot:")
@@ -90,7 +127,8 @@ with qa:
     st.header("Ask your PDF 💬")
     
     # upload file
-    uploaded_files = st.file_uploader("Upload your PDF", type=['pdf', 'csv'], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload your PDF", type=['txt', 'pdf', 'csv'], accept_multiple_files=True)
+    # uploaded_files = st.file_uploader("Upload your PDF", type=['pdf', 'csv'], accept_multiple_files=True)
 
     # create embeddings for each individual file
     embeddings = OpenAIEmbeddings()
@@ -100,13 +138,15 @@ with qa:
 
         # extract the text
         if uploaded_file is not None:
-
-            document_text = ""
-            if "pdf" in uploaded_file.type.lower().strip():
-                document_text = extract_pdf_text(uploaded_file)
-            elif "csv" in uploaded_file.type.lower().strip():
-                document_text = extract_csv_text(uploaded_file)
+            document_text = extract_text(uploaded_file)
             
+            # if "pdf" in uploaded_file.type.lower().strip():
+            #     document_text = extract_pdf_text(uploaded_file)
+            # elif "csv" in uploaded_file.type.lower().strip():
+            #     document_text = extract_csv_text(uploaded_file)
+            # elif "text" in uploaded_file.type.lower().strip():
+            #     document_text = extract_txt_text(uploaded_file)
+
             split_and_load_text(document_text, 
                                 elasticsearch_url=ELASTICSEARCH_URL, 
                                 index_name=ELASTICSEARCH_INDEX, 
