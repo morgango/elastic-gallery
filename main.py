@@ -56,35 +56,8 @@ def extract_text(uploaded_file, encoding="utf8", csv_args={'delimiter': ','}):
     text = loader.load()
     return text
 
-def extract_pdf_text(pdf):
 
-    tmp_file_path = write_temp_file(pdf)
-    loader = PyPDFLoader(file_path=tmp_file_path)
-    text = loader.load()
-
-    return text
-
-def extract_csv_text(csv):
-
-    tmp_file_path = write_temp_file(csv)
-
-    loader = CSVLoader(file_path=tmp_file_path, 
-                       encoding="utf-8", 
-                       csv_args={'delimiter': ','})
-    text = loader.load()
-
-    return text
-
-def extract_txt_text(file):
-    
-    tmp_file_path = write_temp_file(file)
-    loader = TextLoader(tmp_file_path)
-    text = loader.load()
-
-    return text
-
-
-def split_and_load_text(text, elasticsearch_url=None, index_name=None, embeddings=None):
+def load_document_text(text, elasticsearch_url=None, index_name=None, embeddings=None):
 
     # split into chunks
     text_splitter = CharacterTextSplitter(
@@ -93,7 +66,6 @@ def split_and_load_text(text, elasticsearch_url=None, index_name=None, embedding
         chunk_overlap=200,
         length_function=len
     )
-    print(f"Splitting {text}\n")
     chunks = text_splitter.split_documents(text)
     uploaded = ElasticVectorSearch.from_documents(chunks, embeddings,
                                                 elasticsearch_url=elasticsearch_url, 
@@ -127,8 +99,7 @@ with qa:
     st.header("Ask your PDF 💬")
     
     # upload file
-    uploaded_files = st.file_uploader("Upload your PDF", type=['txt', 'pdf', 'csv'], accept_multiple_files=True)
-    # uploaded_files = st.file_uploader("Upload your PDF", type=['pdf', 'csv'], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload your PDF", type=['txt', 'text', 'pdf', 'csv'], accept_multiple_files=True)
 
     # create embeddings for each individual file
     embeddings = OpenAIEmbeddings()
@@ -136,18 +107,13 @@ with qa:
 
     for uploaded_file in uploaded_files:
 
-        # extract the text
         if uploaded_file is not None:
+            
+            # extract the text
             document_text = extract_text(uploaded_file)
             
-            # if "pdf" in uploaded_file.type.lower().strip():
-            #     document_text = extract_pdf_text(uploaded_file)
-            # elif "csv" in uploaded_file.type.lower().strip():
-            #     document_text = extract_csv_text(uploaded_file)
-            # elif "text" in uploaded_file.type.lower().strip():
-            #     document_text = extract_txt_text(uploaded_file)
 
-            split_and_load_text(document_text, 
+            load_document_text(document_text, 
                                 elasticsearch_url=ELASTICSEARCH_URL, 
                                 index_name=ELASTICSEARCH_INDEX, 
                                 embeddings=embeddings)
