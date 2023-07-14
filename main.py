@@ -23,15 +23,71 @@ from dotenv import load_dotenv, find_dotenv
 
 # support stuff
 import tempfile
+import logging
 
-# load the .env file and retrieve the things we need
-load_dotenv(find_dotenv())
-# NOTE: You will need to populate a file called .env in the same directory as main.py
-# with key value pairs for the values below.  
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-ELASTICSEARCH_URL = os.environ.get("ELASTICSEARCH_URL")
-ELASTICSEARCH_INDEX = os.environ.get("ELASTICSEARCH_INDEX")
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG) # or any level you need
 
+# create console handler and set level to debug
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# add formatter to handler
+handler.setFormatter(formatter)
+
+# add handler to logger
+logger.addHandler(handler)
+
+# # load the .env file and retrieve the things we need
+# load_dotenv(find_dotenv())
+# # NOTE: You will need to populate a file called .env in the same directory as main.py
+# # with key value pairs for the values below.  
+# OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+# ELASTICSEARCH_URL = os.environ.get("ELASTICSEARCH_URL")
+# ELASTICSEARCH_INDEX = os.environ.get("ELASTICSEARCH_INDEX")
+
+# all the environment variables we care about
+env_list = ("elasticsearch_user", 
+            "elasticsearch_pw", 
+            "elasticsearch_host", 
+            "elasticsearch_port", 
+            "elasticsearch_model", 
+            "elasticsearch_cloud_id", 
+            "elasticsearch_index", 
+            "openai_api_key")
+
+def check_env():
+    if not load_dotenv(find_dotenv()):
+        print("ERROR: load_dotenv returned error")
+        return False
+
+    if all(env in os.environ for env in env_list):
+        print("ENV file found!")
+        return True
+
+    return False
+
+def load_env():
+
+    check_env()
+
+    # NOTE: You will need to populate a file called .env in the same directory as main.py
+    st.session_state['openai_api_key'] = os.environ.get('openai_api_key')
+    st.session_state['elasticsearch_pw'] = os.environ.get('elasticsearch_pw')
+    st.session_state['elasticsearch_user'] = os.environ.get('elasticsearch_user')
+    st.session_state['elasticsearch_host'] = os.environ.get('elasticsearch_host')
+    st.session_state['elasticsearch_port'] = os.environ.get('elasticsearch_port')
+    st.session_state['elasticsearch_model_id'] = os.environ.get('elasticsearch_model_id')
+    st.session_state['elasticsearch_cloud_id'] = os.environ.get('elasticsearch_cloud_id')
+    st.session_state['elasticsearch_index'] = os.environ.get('elasticsearch_index')
+
+    # build a few useful values
+    st.session_state['elasticsearch_url'] = f"https://{st.session_state.elasticsearch_user}:{st.session_state.elasticsearch_pw}@{st.session_state.elasticsearch_host}:{st.session_state.elasticsearch_port}"
+    os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
+                                                        
 def write_temp_file(uploaded_file):
 
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
@@ -91,10 +147,9 @@ def ask_es_question(question, elasticsearch_url=None, index_name=None, embedding
 
     return docs
 
-
-def load_conv_chain():
+def load_conv_chain(temperature=0.5, open_api_key=""):
     """Logic for loading the chain you want to use should go here."""
-    llm = OpenAI(temperature=0.5, openai_api_key=OPENAI_API_KEY)
+    llm = OpenAI(temperature=temperature, openai_api_key=open_api_key)
     chain = ConversationChain(llm=llm)
     return chain
 
@@ -111,14 +166,14 @@ def get_connections(provider="openai", **kwargs):
     return embeddings, llm
 
         
-
-chain = load_conv_chain()
+load_env()
+chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
 
 # From here down is all the StreamLit UI.
 st.set_page_config(page_title="LangChain Demo", page_icon=":robot:")
 st.header("LangChain Demo")
 
-embeddings, llm = get_connections("openai")
+embeddings, llm = get_connections(provider="openai")
 
 qa, dumb_chat_bot, smarter_chat_bot = st.tabs(["File Q&A - PDF,CSV,TXT", "ChatBot", "ChatBot - Smarter"])
 
@@ -138,8 +193,8 @@ with qa:
             
             # load the data into Elasticsearch
             load_document_text(document_text, 
-                                elasticsearch_url=ELASTICSEARCH_URL, 
-                                index_name=ELASTICSEARCH_INDEX, 
+                                elasticsearch_url=st.session_state.elasticsearch_url, 
+                                index_name=st.session_state.elasticsearch_index, 
                                 embeddings=embeddings)
 
     # show user input
@@ -147,8 +202,8 @@ with qa:
     
     if user_question:
         answer_docs = ask_es_question(user_question, 
-                            elasticsearch_url=ELASTICSEARCH_URL,
-                            index_name=ELASTICSEARCH_INDEX,
+                            elasticsearch_url=st.session_state.elasticsearch_url,
+                            index_name=st.session_state.elasticsearch_index,
                             embeddings=embeddings)
 
         if answer_docs:
