@@ -59,34 +59,34 @@ env_list = ("elasticsearch_user",
             "elasticsearch_index", 
             "openai_api_key")
 
-def check_env():
-    if not load_dotenv(find_dotenv()):
-        print("ERROR: load_dotenv returned error")
-        return False
+# def check_env():
+#     if not load_dotenv(find_dotenv()):
+#         print("ERROR: load_dotenv returned error")
+#         return False
 
-    if all(env in os.environ for env in env_list):
-        print("ENV file found!")
-        return True
+#     if all(env in os.environ for env in env_list):
+#         print("ENV file found!")
+#         return True
 
-    return False
+#     return False
 
-def load_env():
+# def load_env(env_path=None):
 
-    check_env()
+#     check_env()
 
-    # NOTE: You will need to populate a file called .env in the same directory as main.py
-    st.session_state['openai_api_key'] = os.environ.get('openai_api_key')
-    st.session_state['elasticsearch_pw'] = os.environ.get('elasticsearch_pw')
-    st.session_state['elasticsearch_user'] = os.environ.get('elasticsearch_user')
-    st.session_state['elasticsearch_host'] = os.environ.get('elasticsearch_host')
-    st.session_state['elasticsearch_port'] = os.environ.get('elasticsearch_port')
-    st.session_state['elasticsearch_model_id'] = os.environ.get('elasticsearch_model_id')
-    st.session_state['elasticsearch_cloud_id'] = os.environ.get('elasticsearch_cloud_id')
-    st.session_state['elasticsearch_index'] = os.environ.get('elasticsearch_index')
+#     # NOTE: You will need to populate a file called .env in the same directory as main.py
+#     st.session_state['openai_api_key'] = os.environ.get('openai_api_key')
+#     st.session_state['elasticsearch_pw'] = os.environ.get('elasticsearch_pw')
+#     st.session_state['elasticsearch_user'] = os.environ.get('elasticsearch_user')
+#     st.session_state['elasticsearch_host'] = os.environ.get('elasticsearch_host')
+#     st.session_state['elasticsearch_port'] = os.environ.get('elasticsearch_port')
+#     st.session_state['elasticsearch_model_id'] = os.environ.get('elasticsearch_model_id')
+#     st.session_state['elasticsearch_cloud_id'] = os.environ.get('elasticsearch_cloud_id')
+#     st.session_state['elasticsearch_index'] = os.environ.get('elasticsearch_index')
 
-    # build a few useful values
-    st.session_state['elasticsearch_url'] = f"https://{st.session_state.elasticsearch_user}:{st.session_state.elasticsearch_pw}@{st.session_state.elasticsearch_host}:{st.session_state.elasticsearch_port}"
-    os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
+#     # build a few useful values
+#     st.session_state['elasticsearch_url'] = f"https://{st.session_state.elasticsearch_user}:{st.session_state.elasticsearch_pw}@{st.session_state.elasticsearch_host}:{st.session_state.elasticsearch_port}"
+#     os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
                                                         
 def write_temp_file(uploaded_file):
 
@@ -165,8 +165,25 @@ def get_connections(provider="openai", **kwargs):
 
     return embeddings, llm
 
-        
-load_env()
+def load_env(env_path=None):
+    load_dotenv(env_path)
+    return os.environ
+
+def load_session_vars(os_env_vars={}):
+    for key, value in os_env_vars.items():
+        logger.debug(f"{key} = {value}")
+        st.session_state[key] = value
+
+env_file_loaded = 'env_file_loaded' in st.session_state
+
+if not env_file_loaded:
+    env_path = find_dotenv()
+    env_vars = dict(load_env(env_path=env_path))
+    load_session_vars(env_vars)
+    for key in env_list:
+        logger.debug(f"{key}={st.session_state[key]}")
+    st.session_state['env_file_loaded'] = True
+
 chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
 
 # From here down is all the StreamLit UI.
