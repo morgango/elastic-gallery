@@ -73,7 +73,8 @@ def write_temp_file(uploaded_file):
     # Return the path to the temporary file
     return tmp_file_path
 
-def extract_text_from_upload(uploaded_file, encoding="utf8", csv_loader_args={'delimiter': ','}):
+def extract_text_from_upload(uploaded_file, encoding="utf8", 
+                             csv_loader_args={'delimiter': ','}):
     """
     This function extracts text data from an uploaded file. The type of file - PDF, CSV, or text - 
     is determined by checking the file's type. Appropriate loaders are used to extract the text
@@ -158,7 +159,10 @@ def load_document_text(text,
                                                   elasticsearch_url=elasticsearch_url, 
                                                   index_name=index_name)
 
-def ask_es_question(question, elasticsearch_url=None, index_name=None, embeddings=None):
+def ask_es_question(question, 
+                    elasticsearch_url=None, 
+                    index_name=None, 
+                    embeddings=None):
     """
     This function uses an instance of the ElasticVectorSearch class to perform a similarity search on a given 
     Elasticsearch index. It takes a question as input and returns the documents that are most similar to the question.
@@ -188,7 +192,8 @@ def ask_es_question(question, elasticsearch_url=None, index_name=None, embedding
     # Return the most similar documents
     return docs
 
-def load_conv_chain(temperature=0.5, open_api_key=""):
+def load_conv_chain(temperature=0.5, 
+                    open_api_key=""):
     """
     This function creates and returns an instance of the ConversationChain class, which uses an instance 
     of the OpenAI class to generate responses in a conversation.
@@ -270,7 +275,8 @@ def load_env(env_path=None):
     # Return a dictionary-like object containing the environment variables
     return os.environ
 
-def load_session_vars(os_env_vars={}, key_list=None):
+def load_session_vars(os_env_vars={}, 
+                      key_list=None):
     """
     This function loads variables into Streamlit's session state.
 
@@ -299,13 +305,12 @@ def load_session_vars(os_env_vars={}, key_list=None):
         # If not, use the os_env_vars dictionary
         vars = os_env_vars
 
-    # Log the dictionary of variables
-    logger.debug(f"{vars}")
 
     # Iterate over the dictionary of variables
     for key, value in vars.items():
         # Log each variable
         logger.debug(f"Setting st.{key} = {value}")
+
         # Add the variable to the session state
         st.session_state[key] = value
 
@@ -330,81 +335,112 @@ if not 'env_file_loaded' in st.session_state:
     # don't load this multiple times
     st.session_state['env_file_loaded'] = True
 
-chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
+    # qa_chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
+    # st.session_state['qa_chain'] = qa_chain
 
 # From here down is all the StreamLit UI.
 st.set_page_config(page_title="LangChain Demo", page_icon=":robot:")
 st.header("LangChain Demo")
 
+# Initialize embeddings and language model
 embeddings, llm = get_connections(provider="openai")
 
+# Create Streamlit tabs
 qa, dumb_chat_bot, smarter_chat_bot = st.tabs(["File Q&A - PDF,CSV,TXT", "ChatBot", "ChatBot - Smarter"])
 
+# Define content and functionality for the "File Q&A - PDF,CSV,TXT" tab
 with qa:
     st.header("Ask your file 💬")
     
+    # Allow users to upload files
     uploaded_files = st.file_uploader("Upload your file", 
                                       type=['txt', 'text', 'pdf', 'csv'], 
                                       accept_multiple_files=True)
 
+    # Process each uploaded file
     for uploaded_file in uploaded_files:
 
         if uploaded_file is not None:
             
-            # extract the text
+            # Extract text from the uploaded file
             document_text = extract_text_from_upload(uploaded_file)
             
-            # load the data into Elasticsearch
+            # Load the extracted text into Elasticsearch
             load_document_text(document_text, 
-                                elasticsearch_url=st.session_state.elasticsearch_url, 
-                                index_name=st.session_state.elasticsearch_index, 
-                                embeddings=embeddings)
+                               elasticsearch_url=st.session_state.elasticsearch_url, 
+                               index_name=st.session_state.elasticsearch_index, 
+                               embeddings=embeddings)
 
-    # show user input
+    # Allow users to ask a question about the uploaded file(s)
     user_question = st.text_input("Ask a question about your PDF:")
     
+    # Process the user's question
     if user_question:
+        # Search for documents related to the question in Elasticsearch
         answer_docs = ask_es_question(user_question, 
                             elasticsearch_url=st.session_state.elasticsearch_url,
                             index_name=st.session_state.elasticsearch_index,
                             embeddings=embeddings)
 
         if answer_docs:
-            chain = load_qa_chain(llm, chain_type="stuff")
+
+            if not 'qa_chain' in st.session_state:
+                # Initialize QA chain if it's not in session state
+                qa_chain = load_qa_chain(llm, chain_type="stuff")
+            
+            # Retrieve the QA chain from session state
+            qa_chain = st.session_state['qa_chain']
+            
+            # Run the QA chain to generate a response to the user's question
             with get_openai_callback() as cb:
-                print(f"answer_docs={answer_docs}")
-                response = chain.run(input_documents=answer_docs, 
+                response = qa_chain.run(input_documents=answer_docs, 
                                      question=user_question)
                 print(cb)
                 
+            # Display the generated response
             st.write(response)
 
+# Define content and functionality for the "ChatBot" tab
 with dumb_chat_bot:
     st.header("Unaugmented Chat")
-    # if "generated" not in st.session_state:
-    #     st.session_state["generated"] = []
 
-    # if "past" not in st.session_state:
-    #     st.session_state["past"] = []
+    # Initialize conversation chain if it's not in session state
+    if "dumb_conv_chain" not in st.session_state:
+        conv_chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
+        st.session_state['dumb_conv_chain'] = conv_chain
 
-    # def get_text():
-    #     input_text = st.text_input("You: ", "Hello, how are you?", key="input")
-    #     return input_text
+    # Initialize chat history if it's not in session state
+    if "dumb_chat_generated" not in st.session_state:
+        st.session_state["dumb_chat_generated"] = []
 
+    # Initialize user's past chat if it's not in session state
+    if "dumb_chat_past" not in st.session_state:
+        st.session_state["dumb_chat_past"] = []
 
-    # user_input = get_text()
+    # Allow users to input text
+    def get_text():
+        input_text = st.text_input("You: ", "Hello, how are you?", key="input")
+        return input_text
 
-    # if user_input:
-        ########################################################
-        # NEED to create unique chain for each tab, this is causing the error
-        ########################################################
-    #     output = chain.run(input=user_input)
+    # Retrieve the user's input
+    user_input = get_text()
 
-    #     st.session_state.past.append(user_input)
-    #     st.session_state.generated.append(output)
+    # Process the user's input
+    if user_input:
+        # Run the conversation chain to generate a response to the user's input
+        c =  st.session_state['dumb_conv_chain']
+        output = c.run(input=user_input)
 
-    # if st.session_state["generated"]:
+        # Add the user's input and the generated response to chat history
+        st.session_state.dumb_chat_past.append(user_input)
+        st.session_state.dumb_chat_generated.append(output)
 
-    #     for i in range(len(st.session_state["generated"]) - 1, -1, -1):
-    #         message(st.session_state["generated"][i], key=str(i))
-    #         message(st.session_state["past"][i], is_user=True, key=str(i) + "_user")
+    # Display chat history
+    if st.session_state["dumb_chat_generated"]:
+        for i in range(len(st.session_state["dumb_chat_generated"]) - 1, -1, -1):
+            message(st.session_state["dumb_chat_generated"][i], key=str(i))
+            message(st.session_state["dumb_chat_past"][i], is_user=True, key=str(i) + "_user")
+
+# Define content and functionality for the "ChatBot - Smarter" tab
+with smarter_chat_bot:
+    pass
