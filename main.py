@@ -24,6 +24,8 @@ from dotenv import load_dotenv, find_dotenv
 # support stuff
 import tempfile
 import logging
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import NotFoundError, RequestError, BadRequestError
 
 logger = logging.getLogger('my_logger')
 logger.setLevel(logging.DEBUG) # or any level you need
@@ -153,7 +155,7 @@ def load_document_text(text,
 
     # Split the text into chunks
     chunks = text_splitter.split_documents(text)
-    
+    logger.debug(f"Index Name = {index_name}")
     # Upload the chunks to the Elasticsearch cluster
     uploaded = ElasticVectorSearch.from_documents(chunks, embeddings,
                                                   elasticsearch_url=elasticsearch_url, 
@@ -314,8 +316,93 @@ def load_session_vars(os_env_vars={},
         # Add the variable to the session state
         st.session_state[key] = value
 
-    # build the elasticsearch_url for ease of use
-    st.session_state['elasticsearch_url'] = f"https://{st.session_state['elasticsearch_user']}:{st.session_state['elasticsearch_pw']}@{st.session_state['elasticsearch_host']}:{st.session_state['elasticsearch_port']}"
+def build_app_vars():
+    """
+    This function builds the elasticsearch_url for use in the Streamlit app and stores it in the session state.
+
+    It uses the Elasticsearch host, port, user, and password from the session state to construct the URL in the format required.
+
+    Note: It's critical to ensure that the necessary variables (elasticsearch_user, elasticsearch_pw, elasticsearch_host, elasticsearch_port) are available in the session state before calling this function.
+
+    """
+
+    # Construct the Elasticsearch URL using the host, port, user, and password
+    # The URL is formatted according to the Elasticsearch's standard URL format
+
+    if st.session_state['elasticsearch_user'] and \
+        st.session_state['elasticsearch_pw'] and \
+        st.session_state['elasticsearch_host'] and \
+        st.session_state['elasticsearch_port']:
+
+        st.session_state['elasticsearch_url'] = f"https://{st.session_state['elasticsearch_user']}:{st.session_state['elasticsearch_pw']}@{st.session_state['elasticsearch_host']}:{st.session_state['elasticsearch_port']}"
+
+    else:
+        logger.error("The elasticsearch_url could not be written because elasticsearch_user, elasticsearch_pw, elasticsearch_host, and elasticsearch_port are not defined in the session state")
+    # we set this as an environment variable because it has to be present
+    # in so many different places
+
+    if 'open_api_key' not in st.session_state: 
+        os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
+    else:
+        logger.error("The open_api_key is not defined in the session state.")
+
+def create_new_es_index(index_name=None, elasticsearch_url=None):
+    """
+    Creates a new Elasticsearch index with a predefined mapping. If the index already exists,
+    it will be deleted and a new index with the specified name will be created.
+
+    Parameters:
+        index_name (str, optional): The name of the index to be created. Defaults to None.
+        elasticsearch_url (str, optional): The URL of the Elasticsearch cluster. Defaults to None.
+
+    Raises:
+        NotFoundError: If the index specified in index_name does not exist.
+        RequestError: If there's an error in creating the index.
+
+    Example:
+        create_new_es_index(index_name="my_index", elasticsearch_url="http://localhost:9200")
+    """
+
+    # Define the mapping for the index, specifying the data types and structure
+    table_mapping = {
+        "mappings": {
+            "properties": {
+                "metadata": {
+                    "properties": {
+                        "page": {"type": "long"},
+                        "row": {"type": "long"},
+                        "source": {
+                            "type": "text",
+                            "fields": {
+                                "keyword": {
+                                    "type": "keyword",
+                                    "ignore_above": 256
+                                }
+                            }
+                        }
+                    }
+                },
+                "text": {"type": "text"},
+                "vector": {"type": "dense_vector", "dims": 1536}
+            }
+        }
+    }
+
+    # Connect to the Elasticsearch cluster using the provided URL
+    es = Elasticsearch([elasticsearch_url])
+
+    # Check if the index exists
+    try:
+        if not es.indices.exists(index=index_name):
+            es.indices.create(index=index_name, mappings=table_mapping["mappings"])
+
+    except NotFoundError as e:
+        # Handle case when the index is not found
+        logger.error(f"An error occurred: {e}")
+
+    except (RequestError, BadRequestError) as e:
+        # Handle other request errors such as BadRequestError
+        logger.error(f"An error occurred while creating the index: {e}")
 
 # load the environment file if needed.
 if not 'env_file_loaded' in st.session_state:
@@ -327,16 +414,15 @@ if not 'env_file_loaded' in st.session_state:
     # load our values from the .env file into the session state.
     # only add our values, not the entire environment.
     load_session_vars(os_env_vars=env_vars, key_list=env_list)
-
-    # we set this as an environment variable because it has to be present
-    # in so many different places
-    os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
+    build_app_vars()
 
     # don't load this multiple times
     st.session_state['env_file_loaded'] = True
 
-    # qa_chain = load_conv_chain(open_api_key=st.session_state.openai_api_key)
-    # st.session_state['qa_chain'] = qa_chain
+if 'new_index_created' not in st.session_state:
+    print(f"{st.session_state}")
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, elasticsearch_url=st.session_state.elasticsearch_url) 
+    st.session_state['new_index_created'] = True
 
 # From here down is all the StreamLit UI.
 st.set_page_config(page_title="LangChain Demo", page_icon=":robot:")
@@ -384,9 +470,9 @@ with qa:
 
         if answer_docs:
 
-            if not 'qa_chain' in st.session_state:
+            if 'qa_chain' not in st.session_state:
                 # Initialize QA chain if it's not in session state
-                qa_chain = load_qa_chain(llm, chain_type="stuff")
+                st.session_state['qa_chain'] = load_qa_chain(llm, chain_type="stuff")
             
             # Retrieve the QA chain from session state
             qa_chain = st.session_state['qa_chain']
@@ -395,7 +481,7 @@ with qa:
             with get_openai_callback() as cb:
                 response = qa_chain.run(input_documents=answer_docs, 
                                      question=user_question)
-                print(cb)
+                print(type(cb))
                 
             # Display the generated response
             st.write(response)
@@ -419,7 +505,8 @@ with dumb_chat_bot:
 
     # Allow users to input text
     def get_text():
-        input_text = st.text_input("You: ", "Hello, how are you?", key="input")
+        # input_text = st.text_input("You: ", "Hello, how are you?", key="input")
+        input_text = st.text_input("You: ", "", key="input")
         return input_text
 
     # Retrieve the user's input
