@@ -1,9 +1,18 @@
-from common.functions import load_env, create_new_es_index, load_session_vars, env_list, build_app_vars, get_connections, extract_text_from_upload
-from common.functions import ask_es_question, get_openai_callback, load_conv_chain 
-from dotenv import load_dotenv, find_dotenv
 
+# environment stuff
+from dotenv import find_dotenv
+from common.environment import load_env, create_new_es_index, load_session_vars, build_app_vars, env_list
+
+# data chunking and loading stuff
+from common.process import get_connections, extract_text_from_upload, load_document_text
+
+# LLM interaction stuff
+from common.query import ask_es_question, get_openai_callback, load_conv_chain 
+from langchain.chains.question_answering import load_qa_chain
+
+# UI stuff
 import streamlit as st
-
+from streamlit_chat import message
 
 # load the environment file if needed.
 if not 'env_file_loaded' in st.session_state:
