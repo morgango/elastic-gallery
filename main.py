@@ -68,7 +68,7 @@ with qa:
                                embeddings=embeddings)
 
     # Allow users to ask a question about the uploaded file(s)
-    user_question = st.text_input("Ask a question about your PDF:")
+    user_question = st.text_input("Ask a question about your file(s):")
     
     # Process the user's question
     if user_question:
