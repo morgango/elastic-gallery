@@ -98,10 +98,6 @@ with qa:
 # Define content and functionality for the "ChatBot" tab
 with dumb_chat_bot:
 
-    #############################################################################################
-    # This needes to be updated to use st.cat_message and st.chat_input
-    # https://docs.streamlit.io/knowledge-base/tutorials/build-conversational-apps
-    #############################################################################################
     st.header("Unaugmented Chat")
 
     # Initialize conversation chain if it's not in session state
@@ -141,45 +137,3 @@ with dumb_chat_bot:
         for i in range(len(st.session_state["dumb_chat_generated"]) - 1, -1, -1):
             message(st.session_state["dumb_chat_generated"][i], key=str(i))
             message(st.session_state["dumb_chat_past"][i], is_user=True, key=str(i) + "_user")
-
-# Define content and functionality for the "ChatBot - Smarter" tab
-with smarter_chat_bot:
-
-    pass
-    # import openai
-
-    # st.title("ChatGPT-like clone")
-
-
-    # openai.api_key = os.environ["OPENAI_API_KEY"]
-
-    # if "openai_model" not in st.session_state:
-    #     st.session_state["openai_model"] = "gpt-3.5-turbo"
-
-    # if "messages" not in st.session_state:
-    #     st.session_state.messages = []
-
-    # for message in st.session_state.messages:
-    #     with st.chat_message(message["role"]):
-    #         st.markdown(message["content"])
-
-    # if prompt := st.chat_input("What is up?"):
-    #     st.session_state.messages.append({"role": "user", "content": prompt})
-    #     with st.chat_message("user"):
-    #         st.markdown(prompt)
-
-    #     with st.chat_message("assistant"):
-    #         message_placeholder = st.empty()
-    #         full_response = ""
-    #         for response in openai.ChatCompletion.create(
-    #             model=st.session_state["openai_model"],
-    #             messages=[
-    #                 {"role": m["role"], "content": m["content"]}
-    #                 for m in st.session_state.messages
-    #             ],
-    #             stream=True,
-    #         ):
-    #             full_response += response.choices[0].delta.get("content", "")
-    #             message_placeholder.markdown(full_response + "▌")
-    #         message_placeholder.markdown(full_response)
-    #     st.session_state.messages.append({"role": "assistant", "content": full_response})
