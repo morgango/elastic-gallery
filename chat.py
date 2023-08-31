@@ -22,6 +22,23 @@ import json
 import streamlit as st
 from streamlit_chat import message
 
+import logging
+
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG) # or any level you need
+
+# create console handler and set level to debug
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# add formatter to handler
+handler.setFormatter(formatter)
+
+# add handler to logger
+logger.addHandler(handler)
 
 # load the environment file if needed.
 if not 'env_file_loaded' in st.session_state:
@@ -38,6 +55,11 @@ if not 'env_file_loaded' in st.session_state:
     # don't load this multiple times
     st.session_state['env_file_loaded'] = True
 
+if 'new_index_created' not in st.session_state:
+    print(f"{st.session_state}")
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, elasticsearch_url=st.session_state.elasticsearch_url) 
+    st.session_state['new_index_created'] = True
+    
 st.title("ChatGPT-like clone")
 
 # Initialize embeddings and language model
@@ -69,7 +91,7 @@ st.divider()
 # Initialize the 'openai_model' session state if it doesn't already exist
 if "openai_model" not in st.session_state:
     # Default to "gpt-3.5-turbo"
-    st.session_state["openai_model"] = "gpt-3.5-turbo"
+    st.session_state["openai_model"] = "gpt-3.5-turbo-0301"
 
 # Initialize the 'messages' session state if it doesn't already exist, this will store chat messages
 if "messages" not in st.session_state:
@@ -99,32 +121,27 @@ if prompt := st.chat_input("What is up?"):
         message_placeholder = st.empty()
         full_response = ""
         
-        # # Generate assistant's response using OpenAI's model
-        # # 'stream=True' allows the model to send portions of the response as they are generated
-        # for response in openai.ChatCompletion.create(
-        #     model=st.session_state["openai_model"],
-        #     messages=[
-        #         {"role": m["role"], "content": m["content"]}
-        #         for m in st.session_state.messages
-        #     ],
-        #     stream=True,
-        # ):
-        #     # Append new parts of the message to 'full_response'
-        #     full_response += response.choices[0].delta.get("content", "")
-        #     # Display the response as it's being generated, with a cursor ('▌')
-        #     message_placeholder.markdown(full_response + "▌")
-
         answer_docs = ask_es_question(prompt, 
                     elasticsearch_url=st.session_state.elasticsearch_url,
                     index_name=st.session_state.elasticsearch_index,
                     embeddings=embeddings)
+        logger.info(answer_docs)
 
-        for doc in answer_docs:
+        if answer_docs:
+
+            if 'qa_chain' not in st.session_state:
+                # Initialize QA chain if it's not in session state
+                st.session_state['qa_chain'] = load_qa_chain(llm, chain_type="stuff")
             
-        
-        # Replace the placeholder with the final assistant message
-        # message_placeholder.markdown(full_response)
-        message_placeholder.markdown(answer_docs)
+            # Retrieve the QA chain from session state
+            qa_chain = st.session_state['qa_chain']
+            
+            # Run the QA chain to generate a response to the user's question
+            with get_openai_callback() as cb:
+                full_response = qa_chain.run(input_documents=answer_docs, question=prompt)
+                    
+            # Replace the placeholder with the final assistant message
+            message_placeholder.markdown(full_response)
         
     # Append the assistant's message to the 'messages' session state
     st.session_state.messages.append({"role": "assistant", "content": full_response})

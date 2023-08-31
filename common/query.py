@@ -1,7 +1,8 @@
 # langchain stuff
 from langchain.chains import ConversationChain
 from langchain.llms import OpenAI
-from langchain.vectorstores import ElasticVectorSearch
+# from langchain.vectorstores import ElasticVectorSearch
+from langchain.vectorstores import ElasticsearchStore
 from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
@@ -28,10 +29,16 @@ def ask_es_question(question,
 
     The function then performs a similarity search on the index using the input question and returns the most similar documents.
     """
+    # Create an instance of ElasticVectorSearch (the old way of doing this)
+    # knowldedge_base = ElasticVectorSearch(elasticsearch_url=elasticsearch_url, 
+    #                                       index_name=index_name, 
+    #                                       embedding=embeddings)
+
     # Create an instance of ElasticVectorSearch
-    knowldedge_base = ElasticVectorSearch(elasticsearch_url=elasticsearch_url, 
+    knowldedge_base = ElasticsearchStore(es_url=elasticsearch_url, 
                                           index_name=index_name, 
-                                          embedding=embeddings)
+                                          embedding=embeddings,
+                                          strategy=ElasticsearchStore.ExactRetrievalStrategy())
 
     # Perform a similarity search on the index using the input question
     docs = knowldedge_base.similarity_search(question)
