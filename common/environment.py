@@ -139,14 +139,15 @@ def build_app_vars():
     else:
         logger.error("The open_api_key is not defined in the session state.")
 
-def create_new_es_index(index_name=None, elasticsearch_url=None):
+def create_new_es_index(index_name=None, es_url=None, delete_index=False):
     """
     Creates a new Elasticsearch index with a predefined mapping. If the index already exists,
     it will be deleted and a new index with the specified name will be created.
 
     Parameters:
         index_name (str, optional): The name of the index to be created. Defaults to None.
-        elasticsearch_url (str, optional): The URL of the Elasticsearch cluster. Defaults to None.
+        es_url (str, optional): The URL of the Elasticsearch cluster. Defaults to None.
+        delete_index (bool, optional): Should we delete the index if it exists?  Defaults to False.
 
     Raises:
         NotFoundError: If the index specified in index_name does not exist.
@@ -175,14 +176,30 @@ def create_new_es_index(index_name=None, elasticsearch_url=None):
                         }
                     }
                 },
-                "text": {"type": "text"},
-                "vector": {"type": "dense_vector", "dims": 1536}
+                "text": {
+                    "type": "text"
+                },
+                "vector": {
+                    "type": "dense_vector", 
+                    "index": True,
+                    "similarity": "l2_norm",
+                    "dims": 1536
+                }
             }
         }
     }
 
     # Connect to the Elasticsearch cluster using the provided URL
-    es = Elasticsearch([elasticsearch_url])
+    es = Elasticsearch([es_url])
+
+    if delete_index:
+        try:
+            response = es.indices.delete(index=index_name)
+            logger.debug(f"Index '{index_name}' deleted successfully.")
+        except NotFoundError:
+            logger.error(f"Index '{index_name}' not found.")
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
 
     # Check if the index exists
     try:
