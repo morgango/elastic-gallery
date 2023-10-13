@@ -21,24 +21,25 @@ import eland as ed
 import json
 import streamlit as st
 from streamlit_chat import message
+from icecream import ic
 
-import logging
+# import logging
 
-logger = logging.getLogger('my_logger')
-logger.setLevel(logging.DEBUG) # or any level you need
+# logger = logging.getLogger('my_logger')
+# logger.setLevel(logging.DEBUG) # or any level you need
 
-# create console handler and set level to debug
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
+# # create console handler and set level to debug
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.DEBUG)
 
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# # create formatter
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# add formatter to handler
-handler.setFormatter(formatter)
+# # add formatter to handler
+# handler.setFormatter(formatter)
 
-# add handler to logger
-logger.addHandler(handler)
+# # add handler to logger
+# logger.addHandler(handler)
 
 # load the environment file if needed.
 if not 'env_file_loaded' in st.session_state:
@@ -56,8 +57,7 @@ if not 'env_file_loaded' in st.session_state:
     st.session_state['env_file_loaded'] = True
 
 if 'new_index_created' not in st.session_state:
-    print(f"{st.session_state}")
-    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.elasticsearch_url) 
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.elasticsearch_url, delete_index=True) 
     st.session_state['new_index_created'] = True
     
 st.title("ChatGPT-like clone")
@@ -125,8 +125,10 @@ if prompt := st.chat_input("What is up?"):
                     elasticsearch_url=st.session_state.elasticsearch_url,
                     index_name=st.session_state.elasticsearch_index,
                     embeddings=embeddings)
-        logger.info(answer_docs)
 
+        for doc in answer_docs:
+            ic(doc)
+            
         if answer_docs:
 
             if 'qa_chain' not in st.session_state:

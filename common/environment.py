@@ -23,22 +23,24 @@ from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError, RequestError, BadRequestError
 
-import logging
-logger = logging.getLogger('my_logger')
-logger.setLevel(logging.DEBUG) # or any level you need
+from icecream import ic
 
-# create console handler and set level to debug
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
+# import logging
+# logger = logging.getLogger('my_logger')
+# logger.setLevel(logging.DEBUG) # or any level you need
 
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# # create console handler and set level to debug
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.INFO)
 
-# add formatter to handler
-handler.setFormatter(formatter)
+# # create formatter
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# add handler to logger
-logger.addHandler(handler)
+# # add formatter to handler
+# handler.setFormatter(formatter)
+
+# # add handler to logger
+# logger.addHandler(handler)
 
 # all the variables in the .env file that we care about
 env_list = ("elasticsearch_user", 
@@ -103,7 +105,7 @@ def load_session_vars(os_env_vars={},
     # Iterate over the dictionary of variables
     for key, value in vars.items():
         # Log each variable
-        logger.debug(f"Setting st.{key} = {value}")
+        ic(f"Setting st.{key} = {value}")
 
         # Add the variable to the session state
         st.session_state[key] = value
@@ -127,17 +129,17 @@ def build_app_vars():
         st.session_state['elasticsearch_port']:
 
         st.session_state['elasticsearch_url'] = f"https://{st.session_state['elasticsearch_user']}:{st.session_state['elasticsearch_pw']}@{st.session_state['elasticsearch_host']}:{st.session_state['elasticsearch_port']}"
-        logger.debug(f"elasticsearch_url = f{st.session_state.elasticsearch_url}")
+        ic(f"elasticsearch_url = {st.session_state.elasticsearch_url}")
 
     else:
-        logger.error("The elasticsearch_url could not be written because elasticsearch_user, elasticsearch_pw, elasticsearch_host, and elasticsearch_port are not defined in the session state")
+        ic("The elasticsearch_url could not be written because elasticsearch_user, elasticsearch_pw, elasticsearch_host, and elasticsearch_port are not defined in the session state")
     # we set this as an environment variable because it has to be present
     # in so many different places
 
     if 'open_api_key' not in st.session_state: 
         os.environ['OPENAI_API_KEY'] = st.session_state.openai_api_key
     else:
-        logger.error("The open_api_key is not defined in the session state.")
+        ic("The open_api_key is not defined in the session state.")
 
 def create_new_es_index(index_name=None, es_url=None, delete_index=False):
     """
@@ -194,12 +196,11 @@ def create_new_es_index(index_name=None, es_url=None, delete_index=False):
 
     if delete_index:
         try:
-            response = es.indices.delete(index=index_name)
-            logger.debug(f"Index '{index_name}' deleted successfully.")
+            response = ic(es.indices.delete(index=index_name))
         except NotFoundError:
-            logger.error(f"Index '{index_name}' not found.")
+            ic(f"Index '{index_name}' not found.")
         except Exception as e:
-            logger.error(f"An error occurred: {e}")
+            ic(f"An error occurred: {e}")
 
     # Check if the index exists
     try:
@@ -208,8 +209,8 @@ def create_new_es_index(index_name=None, es_url=None, delete_index=False):
 
     except NotFoundError as e:
         # Handle case when the index is not found
-        logger.error(f"An error occurred: {e}")
+        ic(f"An error occurred: {e}")
 
     except (RequestError, BadRequestError) as e:
         # Handle other request errors such as BadRequestError
-        logger.error(f"An error occurred while creating the index: {e}")
+        ic(f"An error occurred while creating the index: {e}")

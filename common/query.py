@@ -34,7 +34,7 @@ def ask_es_question(question,
     #                                       index_name=index_name, 
     #                                       embedding=embeddings)
 
-    # Create an instance of ElasticVectorSearch
+    # Create an instance of ElasticStore
     knowldedge_base = ElasticsearchStore(es_url=elasticsearch_url, 
                                           index_name=index_name, 
                                           embedding=embeddings,

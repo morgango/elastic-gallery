@@ -13,23 +13,25 @@ from langchain.document_loaders import TextLoader
 
 # support stuff
 import tempfile
-import logging
+from icecream import ic
 
-logger = logging.getLogger('my_logger')
-logger.setLevel(logging.DEBUG) # or any level you need
+# import logging
 
-# create console handler and set level to debug
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
+# logger = logging.getLogger('my_logger')
+# logger.setLevel(logging.DEBUG) # or any level you need
 
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# # create console handler and set level to debug
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.DEBUG)
 
-# add formatter to handler
-handler.setFormatter(formatter)
+# # create formatter
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# add handler to logger
-logger.addHandler(handler)
+# # add formatter to handler
+# handler.setFormatter(formatter)
+
+# # add handler to logger
+# logger.addHandler(handler)
 
 def write_temp_file(uploaded_file):
     """
@@ -168,7 +170,7 @@ def load_document_text(text,
 
     # Split the text into chunks
     chunks = text_splitter.split_documents(text)
-    logger.debug(f"Index Name = {index_name}")
+    ic(f"Index Name = {index_name}")
     # Upload the chunks to the Elasticsearch cluster
     uploaded = ElasticVectorSearch.from_documents(chunks, embeddings,
                                                   elasticsearch_url=elasticsearch_url, 
