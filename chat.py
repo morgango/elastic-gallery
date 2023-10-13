@@ -57,7 +57,7 @@ if not 'env_file_loaded' in st.session_state:
 
 if 'new_index_created' not in st.session_state:
     print(f"{st.session_state}")
-    create_new_es_index(index_name=st.session_state.elasticsearch_index, elasticsearch_url=st.session_state.elasticsearch_url) 
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.elasticsearch_url) 
     st.session_state['new_index_created'] = True
     
 st.title("ChatGPT-like clone")
