@@ -5,6 +5,7 @@ from langchain.llms import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import ElasticVectorSearch
+from langchain.vectorstores import ElasticsearchStore
 from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
 from langchain.document_loaders.csv_loader import CSVLoader
@@ -132,7 +133,7 @@ def extract_text_from_upload(uploaded_file, encoding="utf8",
     return text
 
 def load_document_text(text, 
-                       elasticsearch_url=None, 
+                       es_url=None, 
                        index_name=None, 
                        embeddings=None, 
                        separator="\n", 
@@ -145,7 +146,7 @@ def load_document_text(text,
 
     Parameters:
     text (str): The text to be split and uploaded.
-    elasticsearch_url (str): Optional. The URL of the Elasticsearch cluster. Defaults to None.
+    es_url (str): Optional. The URL of the Elasticsearch cluster. Defaults to None.
     index_name (str): Optional. The name of the Elasticsearch index where the chunks will be uploaded. Defaults to None.
     embeddings (np.ndarray or list of np.ndarray): Optional. The embeddings for the chunks, if any. Defaults to None.
     separator (str): Optional. The character used to split the text into chunks. Defaults to "\n".
@@ -170,8 +171,8 @@ def load_document_text(text,
 
     # Split the text into chunks
     chunks = text_splitter.split_documents(text)
-    ic(f"Index Name = {index_name}")
+    
     # Upload the chunks to the Elasticsearch cluster
-    uploaded = ElasticVectorSearch.from_documents(chunks, embeddings,
-                                                  elasticsearch_url=elasticsearch_url, 
+    uploaded = ElasticsearchStore.from_documents(chunks, embeddings,
+                                                  es_url=es_url, 
                                                   index_name=index_name)

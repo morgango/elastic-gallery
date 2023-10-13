@@ -59,7 +59,7 @@ def extract_es_index_fields(mapping_dict):
     return fields
 
 
-es = Elasticsearch(st.session_state.elasticsearch_url)
+es = Elasticsearch(st.session_state.es_url)
 
 # Get list of all indices
 indices = es.indices.get_alias().keys()
@@ -75,7 +75,7 @@ st.write('Mapping:', mapping)
 fields = extract_es_index_fields(mapping[option])
 st.write('Fields:', fields)
 
-df = ed.DataFrame(st.session_state.elasticsearch_url, option)
+df = ed.DataFrame(st.session_state.es_url, option)
 dft = df[['text']]
 st.dataframe(dft, hide_index=True)
 

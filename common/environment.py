@@ -7,7 +7,8 @@ from langchain.chains import ConversationChain
 from langchain.llms import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import ElasticVectorSearch
+# from langchain.vectorstores import ElasticVectorSearch
+from langchain.vectorstores import ElasticsearchStore
 from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
@@ -112,7 +113,7 @@ def load_session_vars(os_env_vars={},
 
 def build_app_vars():
     """
-    This function builds the elasticsearch_url for use in the Streamlit app and stores it in the session state.
+    This function builds the es_url for use in the Streamlit app and stores it in the session state.
 
     It uses the Elasticsearch host, port, user, and password from the session state to construct the URL in the format required.
 
@@ -128,11 +129,11 @@ def build_app_vars():
         st.session_state['elasticsearch_host'] and \
         st.session_state['elasticsearch_port']:
 
-        st.session_state['elasticsearch_url'] = f"https://{st.session_state['elasticsearch_user']}:{st.session_state['elasticsearch_pw']}@{st.session_state['elasticsearch_host']}:{st.session_state['elasticsearch_port']}"
-        ic(f"elasticsearch_url = {st.session_state.elasticsearch_url}")
+        st.session_state['es_url'] = f"https://{st.session_state['elasticsearch_user']}:{st.session_state['elasticsearch_pw']}@{st.session_state['elasticsearch_host']}:{st.session_state['elasticsearch_port']}"
+        ic(f"es_url = {st.session_state.es_url}")
 
     else:
-        ic("The elasticsearch_url could not be written because elasticsearch_user, elasticsearch_pw, elasticsearch_host, and elasticsearch_port are not defined in the session state")
+        ic("The es_url could not be written because elasticsearch_user, elasticsearch_pw, elasticsearch_host, and elasticsearch_port are not defined in the session state")
     # we set this as an environment variable because it has to be present
     # in so many different places
 
@@ -156,7 +157,7 @@ def create_new_es_index(index_name=None, es_url=None, delete_index=False):
         RequestError: If there's an error in creating the index.
 
     Example:
-        create_new_es_index(index_name="my_index", elasticsearch_url="http://localhost:9200")
+        create_new_es_index(index_name="my_index", es_url="http://localhost:9200")
     """
 
     # Define the mapping for the index, specifying the data types and structure

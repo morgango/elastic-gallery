@@ -31,7 +31,7 @@ if not 'env_file_loaded' in st.session_state:
 
 if 'new_index_created' not in st.session_state:
     print(f"{st.session_state}")
-    create_new_es_index(index_name=st.session_state.elasticsearch_index, elasticsearch_url=st.session_state.elasticsearch_url) 
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.es_url) 
     st.session_state['new_index_created'] = True
 
 # From here down is all the StreamLit UI.
@@ -63,7 +63,7 @@ with qa:
             
             # Load the extracted text into Elasticsearch
             load_document_text(document_text, 
-                               elasticsearch_url=st.session_state.elasticsearch_url, 
+                               es_url=st.session_state.es_url, 
                                index_name=st.session_state.elasticsearch_index, 
                                embeddings=embeddings)
 
@@ -74,7 +74,7 @@ with qa:
     if user_question:
         # Search for documents related to the question in Elasticsearch
         answer_docs = ask_es_question(user_question, 
-                            elasticsearch_url=st.session_state.elasticsearch_url,
+                            es_url=st.session_state.es_url,
                             index_name=st.session_state.elasticsearch_index,
                             embeddings=embeddings)
 

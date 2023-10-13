@@ -57,7 +57,7 @@ if not 'env_file_loaded' in st.session_state:
     st.session_state['env_file_loaded'] = True
 
 if 'new_index_created' not in st.session_state:
-    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.elasticsearch_url, delete_index=True) 
+    create_new_es_index(index_name=st.session_state.elasticsearch_index, es_url=st.session_state.es_url, delete_index=True) 
     st.session_state['new_index_created'] = True
     
 st.title("ChatGPT-like clone")
@@ -82,7 +82,7 @@ for uploaded_file in uploaded_files:
         
         # Load the extracted text into Elasticsearch
         load_document_text(document_text, 
-                            elasticsearch_url=st.session_state.elasticsearch_url, 
+                            es_url=st.session_state.es_url, 
                             index_name=st.session_state.elasticsearch_index, 
                             embeddings=embeddings)
 
@@ -122,7 +122,7 @@ if prompt := st.chat_input("What is up?"):
         full_response = ""
         
         answer_docs = ask_es_question(prompt, 
-                    elasticsearch_url=st.session_state.elasticsearch_url,
+                    es_url=st.session_state.es_url,
                     index_name=st.session_state.elasticsearch_index,
                     embeddings=embeddings)
 

@@ -8,16 +8,16 @@ from langchain.llms import OpenAI
 from langchain.callbacks import get_openai_callback
 
 def ask_es_question(question, 
-                    elasticsearch_url=None, 
+                    es_url=None, 
                     index_name=None, 
                     embeddings=None):
     """
-    This function uses an instance of the ElasticVectorSearch class to perform a similarity search on a given 
+    This function uses an instance of the ElasticsearchStore class to perform a similarity search on a given 
     Elasticsearch index. It takes a question as input and returns the documents that are most similar to the question.
 
     Parameters:
     question (str): The question to be used for the similarity search.
-    elasticsearch_url (str): Optional. The URL of the Elasticsearch cluster. Defaults to None.
+    es_url (str): Optional. The URL of the Elasticsearch cluster. Defaults to None.
     index_name (str): Optional. The name of the Elasticsearch index where the search will be performed. Defaults to None.
     embeddings (np.ndarray or list of np.ndarray): Optional. The embeddings for the question, if any. Defaults to None.
 
@@ -30,12 +30,12 @@ def ask_es_question(question,
     The function then performs a similarity search on the index using the input question and returns the most similar documents.
     """
     # Create an instance of ElasticVectorSearch (the old way of doing this)
-    # knowldedge_base = ElasticVectorSearch(elasticsearch_url=elasticsearch_url, 
+    # knowldedge_base = ElasticVectorSearch(es_url=es_url, 
     #                                       index_name=index_name, 
     #                                       embedding=embeddings)
 
     # Create an instance of ElasticStore
-    knowldedge_base = ElasticsearchStore(es_url=elasticsearch_url, 
+    knowldedge_base = ElasticsearchStore(es_url=es_url, 
                                           index_name=index_name, 
                                           embedding=embeddings,
                                           strategy=ElasticsearchStore.ExactRetrievalStrategy())
